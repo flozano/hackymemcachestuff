@@ -1,8 +1,6 @@
 package com.flozano.memcachestuff;
 
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.io.ObjectInputStream;
 import java.net.InetSocketAddress;
 import java.nio.charset.Charset;
 import java.util.concurrent.TimeoutException;
@@ -12,15 +10,20 @@ import net.rubyeye.xmemcached.MemcachedClient;
 import net.rubyeye.xmemcached.XMemcachedClientBuilder;
 import net.rubyeye.xmemcached.exception.MemcachedException;
 
-public class CleanSerializedByClass {
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+public class RemoveByContent {
+	private static final Logger LOGGER = LoggerFactory
+			.getLogger(RemoveByContent.class);
+
 	public static void main(String[] argz) throws IOException,
 			MemcachedException, InterruptedException, TimeoutException {
 		MemcachedClient iteratorClient = null;
 		MemcachedClient client = null;
 		try {
 			String host = argz[0];
-			String value = argz[1];
-			byte[] searchValue = value.getBytes(Charset.forName("ISO-8859-1"));
+			String searchString = argz[1];
 			XMemcachedClientBuilder clientBuilder = new XMemcachedClientBuilder(
 					host);
 			clientBuilder.setTranscoder(new ByteArrayTranscoder());
@@ -35,10 +38,10 @@ public class CleanSerializedByClass {
 				byte[] keyValue = client.get(key);
 
 				if (keyValue == null) {
-					System.err.println(">>>>>>> Empty key " + key);
+					LOGGER.info("Empty key {}", key);
 					continue;
 				}
-				if (needsToBeDeleted(key, keyValue)) {
+				if (needsToBeDeleted(key, keyValue, searchString)) {
 					client.delete(key);
 				}
 			}
@@ -49,30 +52,16 @@ public class CleanSerializedByClass {
 		}
 	}
 
-	private static boolean needsToBeDeleted(String key, byte[] keyValue) {
-		if (KPM.indexOf(keyValue, keyValue) != -1) {
-			System.err.println(">>>>>>> OK " + key + " - removing");
+	private static boolean needsToBeDeleted(String key, byte[] keyValue,
+			String searchString) {
+		byte[] searchValue = searchString.getBytes(Charset
+				.forName("ISO-8859-1"));
+
+		if (KPM.indexOf(keyValue, searchValue) > 0) {
+			LOGGER.info("Found {} in key {} - removing", searchString, key);
 			return true;
 		} else {
-			System.err.println("ko " + key + " - " + new String(keyValue));
 			return false;
 		}
-	}
-
-	private static boolean needsToBeDeleted_data(String key, byte[] keyValue) {
-		try {
-			ObjectInputStream ois = new ObjectInputStream(
-					new ByteArrayInputStream(keyValue));
-			Object o = ois.readObject();
-			// TODO continue
-			// if o instanceof blabla and fields match blabla...
-			return false;
-		} catch (IOException e) {
-			throw new RuntimeException(e);
-		} catch (ClassNotFoundException e) {
-			throw new RuntimeException(e);
-
-		}
-
 	}
 }
