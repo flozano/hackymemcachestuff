@@ -33,6 +33,7 @@ public class RemoveByContent {
 			InetSocketAddress address = iteratorClient.getAvailableServers()
 					.iterator().next();
 			KeyIterator it = iteratorClient.getKeyIterator(address);
+			int i = 0, deleted = 0;
 			while (it.hasNext()) {
 				String key = it.next();
 				byte[] keyValue = client.get(key);
@@ -43,8 +44,11 @@ public class RemoveByContent {
 				}
 				if (needsToBeDeleted(key, keyValue, searchString)) {
 					client.delete(key);
+					deleted++;
 				}
+				i++;
 			}
+			LOGGER.info("Processed {} keys, deleted {} keys", i, deleted);
 
 		} finally {
 			iteratorClient.shutdown();
@@ -57,10 +61,11 @@ public class RemoveByContent {
 		byte[] searchValue = searchString.getBytes(Charset
 				.forName("ISO-8859-1"));
 
-		if (KPM.indexOf(keyValue, searchValue) > 0) {
-			LOGGER.info("Found {} in key {} - removing", searchString, key);
+		if (KPM.indexOf(keyValue, searchValue) > -1) {
+			LOGGER.info("OK key {} - removing", searchString, key);
 			return true;
 		} else {
+			LOGGER.debug("ko key {}", key);
 			return false;
 		}
 	}
